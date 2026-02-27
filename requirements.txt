@@ -1,0 +1,30 @@
+# Cryptographie
+pynacl==1.5.0                    # Ed25519, X25519, SecretBox
+pycryptodome==3.20.0             # AES-256-GCM, HKDF, HMAC
+cryptography==43.0.0             # Utils crypto bonus
+
+# Réseau & Async
+asyncio==built-in                # Event loop (Python standard)
+aiohttp==3.9.0                   # Serveur HTTP local optionnel
+
+# CLI & Interface
+click==8.1.7                     # Parsing arguments
+rich==13.7.0                     # Affichage console joli
+prompt_toolkit==3.0.43           # CLI interactif (optionnel)
+
+# Stockage & Persistance
+sqlite3==built-in                # Base de données locale
+msgpack==1.0.8                   # Sérialisation binaire rapide
+
+# AI (OPTIONAL - désactivable)
+google-generativeai==0.3.2       # API Gemini
+python-dotenv==1.0.0             # Variables d'environnement
+
+# Testing & Debug
+pytest==8.0.0                    # Tests unitaires
+pytest-asyncio==0.23.0           # Tests async
+pytest-cov==4.1.0                # Couverture de code
+
+# Logging & Monitoring
+loguru==0.7.2                    # Logging avancé
+psutil==5.9.8                    # Stats système (CPU, mémoire)
