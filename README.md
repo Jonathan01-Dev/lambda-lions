@@ -126,3 +126,4 @@ Chaque nœud est à la fois client et serveur. Le réseau survit à une coupure 
 | `0x07` | ACK | Acquittement |
 
 ### Exemple : Paquet HELLO (73 bytes)
+Modifier par Florent
