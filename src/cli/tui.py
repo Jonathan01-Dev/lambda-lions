@@ -273,6 +273,20 @@ class ArchipelDashboard(App):
                 self.write_to_log(f"[bold red]Transfer Failed[/bold red]: {e}")
             return
 
+        elif text.startswith("/ping"):
+            if not self.selected_peer_id:
+                self.write_to_log("[bold red]Error[/bold red]: Select a peer first to ping.")
+                return
+            self.write_to_log(f"[bold yellow]Ping[/bold yellow]: Sending PING to {self.selected_peer_id[:8]}...")
+            try:
+                from src.protocol.packet import Packet
+                from src.protocol import types
+                packet = Packet(types.PING, self.node.node_id, b"PING")
+                await self.node.send_to_peer(self.selected_peer_id, packet.serialize())
+            except Exception as e:
+                self.write_to_log(f"[bold red]Ping Failed[/bold red]: {e}")
+            return
+
         if not self.selected_peer_id:
             self.write_to_log("[bold red]Error[/bold red]: Select a peer first or use [italic]/connect IP:PORT[/italic]")
             return

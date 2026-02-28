@@ -112,8 +112,18 @@ class Node:
                 if len(packet.payload) == 64:
                     file_hash = packet.payload[:32].hex()
                     chunk_hash = packet.payload[32:].hex()
-                    import asyncio
                     asyncio.create_task(self._send_chunk(sender_id, file_hash, chunk_hash))
+
+            elif packet.type == types.PING:
+                from src.protocol.packet import Packet
+                pong = Packet(types.PONG, self.node_id, b"PONG")
+                asyncio.create_task(self.send_to_peer(sender_id, pong.serialize()))
+                logger.debug(f"Received PING from {sender_id[:8]}, sent PONG")
+
+            elif packet.type == types.PONG:
+                logger.info(f"Received PONG from {sender_id[:8]}")
+                if hasattr(self, "on_pong"):
+                    self.on_pong(sender_id)
 
             elif packet.type == types.CHUNK_DATA:
                 # Payload: FileHash(32b) + ChunkHash(32b) + Data
@@ -214,11 +224,13 @@ class Node:
         
         file_hash = file_hash_obj.digest()
         
-        # Store for CHUNK_REQ responses
+        # Store for CHUNK_REQ responses (Active Uploads)
         if not hasattr(self, "_active_uploads"):
             self._active_uploads = {}
         
-        self._active_uploads[file_hash.hex()] = {
+        file_hash_hex = file_hash.hex()
+        self._active_uploads[file_hash_hex] = {
+            "filename": filename,
             "chunks": {ch.hex(): data for ch, data in zip(chunk_hashes, chunks)}
         }
         
@@ -226,6 +238,8 @@ class Node:
         # Format: Filename\0TotalSize\0Hash(raw)\0ChunkHash1,ChunkHash2...
         payload = filename.encode() + b"\0" + str(total_size).encode() + b"\0" + file_hash + b"\0" + b",".join(chunk_hashes)
         manifest_packet = Packet(types.MANIFEST, self.node_id, payload)
+        
+        logger.info(f"STARTING TRANSFER: {filename} ({total_size} bytes, {len(chunks)} chunks)")
         await self.send_to_peer(peer_id_hex, manifest_packet.serialize())
         logger.info(f"Sent MANIFEST for {filename} to {peer_id_hex[:8]}")
 
@@ -242,7 +256,11 @@ class Node:
                 payload = bytes.fromhex(file_hash) + bytes.fromhex(chunk_hash) + chunk_data
                 packet = Packet(types.CHUNK_DATA, self.node_id, payload)
                 await self.send_to_peer(peer_id, packet.serialize())
-                logger.info(f"Sent chunk {chunk_hash[:8]} to {peer_id[:8]}")
+                logger.info(f"CHUNK SENT: {chunk_hash[:8]} of file {file_hash[:8]} to {peer_id[:8]}")
+            else:
+                logger.warning(f"Requested chunk {chunk_hash[:8]} not found in active upload")
+        else:
+            logger.warning(f"Requested file hash {file_hash[:8]} not found in active uploads")
 
     async def send_to_peer(self, peer_id_hex: str, data: bytes):
         """Find peer in table, connect, and send encrypted data."""

@@ -13,6 +13,8 @@ click==8.1.7                     # Parsing arguments
 rich==13.7.0                     # Affichage console joli
 prompt_toolkit==3.0.43           # CLI interactif (optionnel)
 textual==0.50.0                  # TUI (Interface Graphique Terminal)
+fastapi==0.109.0                 # API Backend pour le Web Dashboard
+uvicorn==0.27.0                  # Serveur ASGI pour FastAPI
 
 # Stockage & Persistance
 # sqlite3 est intégré à Python

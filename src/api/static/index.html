@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archipel | P2P Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f111a;
+            --sidebar-bg: rgba(22, 24, 34, 0.8);
+            --card-bg: rgba(30, 32, 48, 0.6);
+            --accent: #2ac3de;
+            --accent-glow: rgba(42, 195, 222, 0.3);
+            --text: #c0caf5;
+            --text-dim: #7982a9;
+            --glass: blur(12px) saturate(180%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* Glass sidebar */
+        #sidebar {
+            width: 320px;
+            background: var(--sidebar-bg);
+            backdrop-filter: var(--glass);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent), #7aa2f7);
+            border-radius: 8px;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .section-title {
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+        }
+
+        #peer-list {
+            list-style: none;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .peer-item {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid transparent;
+        }
+
+        .peer-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .peer-item.active {
+            background: rgba(42, 195, 222, 0.1);
+            border-color: rgba(42, 195, 222, 0.3);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #4fd1c5;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(79, 209, 197, 0.5);
+        }
+
+        /* Main Content */
+        #main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle at top right, rgba(42, 195, 222, 0.05), transparent);
+        }
+
+        header {
+            padding: 24px 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #chat-area {
+            flex-grow: 1;
+            padding: 40px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 16px 20px;
+            border-radius: 20px;
+            line-height: 1.5;
+            position: relative;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.received {
+            background: var(--card-bg);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.sent {
+            background: linear-gradient(135deg, var(--accent), #1f2937);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        footer {
+            padding: 24px 40px;
+            background: rgba(15, 17, 26, 0.8);
+            backdrop-filter: var(--glass);
+        }
+
+        .input-wrapper {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--accent);
+        }
+
+        input {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 12px;
+            flex-grow: 1;
+            outline: none;
+            font-size: 15px;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover { transform: scale(1.02); }
+
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div class="logo">
+            <div class="logo-icon"></div>
+            <span>ARCHIPEL</span>
+        </div>
+        
+        <div class="section-title">En réseaux</div>
+        <ul id="peer-list">
+            <!-- Peers go here -->
+        </ul>
+
+        <div class="section-title" style="margin-top: 40px">Actions</div>
+        <button class="btn" onclick="showConnectModal()" style="width: 100%">Connecter Ad-hoc</button>
+    </div>
+
+    <div id="main-content">
+        <header>
+            <div id="active-peer-info">
+                <h2 id="current-peer-name" style="font-family: 'Outfit'; font-size: 20px">Sélectionnez un peer</h2>
+                <p id="current-peer-addr" style="font-size: 13px; color: var(--text-dim)">En attente de connexion...</p>
+            </div>
+            <div class="actions">
+                <button class="btn" onclick="askAi()" style="background: transparent; border: 1px solid var(--accent); color: var(--accent)">Ask AI</button>
+            </div>
+        </header>
+
+        <div id="chat-area">
+            <!-- Messages go here -->
+        </div>
+
+        <footer>
+            <div class="input-wrapper">
+                <input type="text" id="chat-input" placeholder="Écrivez un message sécurisé...">
+                <button class="btn" onclick="sendMessage()">Envoyer</button>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        let selectedPeerId = null;
+        let messages = [];
+
+        async function updateStatus() {
+            const res = await fetch('/api/status');
+            const data = await res.json();
+            // Update node ID etc
+        }
+
+        async function refreshPeers() {
+            const res = await fetch('/api/peers');
+            const peers = await res.json();
+            const list = document.getElementById('peer-list');
+            list.innerHTML = '';
+            peers.forEach(peer => {
+                const li = document.createElement('li');
+                li.className = `peer-item ${selectedPeerId === peer.id ? 'active' : ''}`;
+                li.onclick = () => selectPeer(peer);
+                li.innerHTML = `
+                    <div class="status-dot"></div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px">${peer.id.slice(0, 8)}</div>
+                        <div style="font-size: 12px; color: var(--text-dim)">${peer.host}:${peer.port}</div>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function selectPeer(peer) {
+            selectedPeerId = peer.id;
+            document.getElementById('current-peer-name').innerText = `Node: ${peer.id.slice(0, 8)}`;
+            document.getElementById('current-peer-addr').innerText = `${peer.host}:${peer.port}`;
+            refreshPeers();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const content = input.value.trim();
+            if(!content || !selectedPeerId) return;
+
+            await fetch('/api/send', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({peer_id: selectedPeerId, content: content})
+            });
+            input.value = '';
+            pollMessages();
+        }
+
+        async function pollMessages() {
+            const res = await fetch('/api/messages');
+            const data = await res.json();
+            const chat = document.getElementById('chat-area');
+            chat.innerHTML = '';
+            data.forEach(msg => {
+                const div = document.createElement('div');
+                div.className = `message ${msg.sender === 'me' ? 'sent' : 'received'}`;
+                div.innerText = msg.content;
+                chat.appendChild(div);
+            });
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        async function askAi() {
+            const input = document.getElementById('chat-input');
+            const content = input.value.trim();
+            if(!content) return;
+            
+            // Add a temporary "Thinking" message
+            messages.push({sender: "ai", content: "..."});
+            pollMessages();
+            
+            const res = await fetch('/api/ask-ai', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({peer_id: "", content: content})
+            });
+            const data = await res.json();
+            // API server handles the Gemini call
+        }
+
+        async function showConnectModal() {
+            const addr = prompt("Entrez l'adresse IP et le port (ex: 192.168.1.10:7777)");
+            if(!addr) return;
+            const [host, port] = addr.split(':');
+            await fetch('/api/connect', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({host: host, port: parseInt(port || 7777)})
+            });
+            refreshPeers();
+        }
+
+        setInterval(refreshPeers, 3000);
+        setInterval(pollMessages, 2000);
+        updateStatus();
+    </script>
+</body>
+</html>
