@@ -15,6 +15,7 @@ prompt_toolkit==3.0.43           # CLI interactif (optionnel)
 textual==0.50.0                  # TUI (Interface Graphique Terminal)
 fastapi==0.109.0                 # API Backend pour le Web Dashboard
 uvicorn==0.27.0                  # Serveur ASGI pour FastAPI
+python-multipart==0.0.9          # Gestion des uploads pour FastAPI
 
 # Stockage & Persistance
 # sqlite3 est intégré à Python

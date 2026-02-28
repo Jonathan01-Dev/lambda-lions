@@ -28,8 +28,8 @@ start http://127.0.0.1:8000
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo [ERROR] Le serveur a echoue. Verifiez que 'fastapi' et 'uvicorn' sont installes.
-    echo Tapez: pip install fastapi uvicorn
+    echo [ERROR] Le serveur a echoue. Verifiez que 'fastapi', 'uvicorn' et 'python-multipart' sont installes.
+    echo Tapez: pip install fastapi uvicorn python-multipart
 )
 
 pause
