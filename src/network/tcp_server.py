@@ -52,13 +52,22 @@ class TCPServer:
             peer_id = remote_ed_pk_bytes.hex()
             self.node.sessions[peer_id] = session
             
-            # Record peer in table
-            self.node.peer_table.add_peer(
-                peer_id, 
-                addr[0], 
-                addr[1], 
-                asyncio.get_event_loop().time()
-            )
+            # Record peer in table (but avoid overwriting their listener port with ephemeral port)
+            existing = self.node.peer_table.get_peer(peer_id)
+            if existing: # Update last_seen only
+                self.node.peer_table.add_peer(
+                    peer_id, 
+                    existing[0], 
+                    existing[1], 
+                    asyncio.get_event_loop().time()
+                )
+            else:
+                self.node.peer_table.add_peer(
+                    peer_id, 
+                    addr[0], 
+                    7777, # Default Archipel port, as we don't know their listening port
+                    asyncio.get_event_loop().time()
+                )
             
             success(f"Secure session established with remote node {peer_id[:16]}... at {addr}")
             logger.info(f"Handshake complete. Local node ID: {self.node.vk.encode().hex()[:16]}... Remote node ID: {peer_id[:16]}...")

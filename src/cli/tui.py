@@ -193,17 +193,20 @@ class ArchipelDashboard(App):
             
         event.input.value = ""
         
-        # Check if we are in "Connect" mode (starts with /connect) or just sending msg
         if text.startswith("/connect "):
-            peer_addr = text.replace("/connect ", "")
+            peer_addr = text.replace("/connect ", "").strip()
             self.write_to_log(f"[bold yellow]Ad-hoc[/bold yellow]: Connecting to {peer_addr}...")
             try:
                 from src.network.tcp_client import TCPClient
-                host, port = peer_addr.split(":")
+                if ":" in peer_addr:
+                    host, port = peer_addr.split(":", 1)
+                else:
+                    host = peer_addr
+                    port = 7777
                 client = TCPClient(self.node, host, int(port))
                 await client.connect() # This will also add it to the table
                 await client.close()
-                self.write_to_log(f"[bold green]Success[/bold green]: Handshake with {peer_addr} complete.")
+                self.write_to_log(f"[bold green]Success[/bold green]: Handshake with {host}:{port} complete.")
                 self.update_peer_list()
             except Exception as e:
                 self.write_to_log(f"[bold red]Connect Failed[/bold red]: {e}")
