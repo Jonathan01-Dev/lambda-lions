@@ -131,23 +131,31 @@ async def connect_peer(req: ConnectRequest):
         await client.close()
         log_system(f"Handshake successful with {peer_id[:8]}")
         return {"status": "success", "peer_id": peer_id}
+    except ConnectionRefusedError:
+        log_system(f"Connection refused by {req.host}:{req.port}. Is Node B running?")
+        raise HTTPException(status_code=500, detail="Connection Refused")
+    except asyncio.TimeoutError:
+        log_system(f"Handshake TIMEOUT with {req.host}:{req.port}. CHECK FIREWALL!")
+        raise HTTPException(status_code=500, detail="Handshake Timeout - Check Firewalls")
     except Exception as e:
         log_system(f"Connection failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/send")
-async def send_message(req: SendMessageRequest):
+async def send_message(req: SendMessageRequest, background_tasks: BackgroundTasks):
     log_system(f"Sending message to {req.peer_id[:8]}")
     try:
         packet = Packet(types.MSG, node.node_id, req.content.encode())
-        await node.send_to_peer(req.peer_id, packet.serialize())
+        # Run send in background to avoid hanging the UI if there's a slow handshake
+        background_tasks.add_task(node.send_to_peer, req.peer_id, packet.serialize())
+        
         time_str = datetime.now().strftime("%H:%M")
         messages.append({"sender": "me", "content": req.content, "time": time_str})
         if len(messages) > MAX_MESSAGES:
             messages.pop(0)
-        return {"status": "sent"}
+        return {"status": "sending"}
     except Exception as e:
-        log_system(f"Send failed: {e}")
+        log_system(f"Send trigger failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/messages")
@@ -167,15 +175,13 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/send-file")
-async def send_file(req: SendMessageRequest):
-    # Reuse SendMessageRequest, content is the local_path
+async def send_file(req: SendMessageRequest, background_tasks: BackgroundTasks):
     log_system(f"Starting P2P transfer of {os.path.basename(req.content)} to {req.peer_id[:8]}")
     try:
-        # Node's send_file is async
-        asyncio.create_task(node.send_file(req.peer_id, req.content))
+        background_tasks.add_task(node.send_file, req.peer_id, req.content)
         return {"status": "transfer_started"}
     except Exception as e:
-        log_system(f"P2P Send failed: {e}")
+        log_system(f"P2P Send trigger failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/ask-ai")
@@ -200,4 +206,15 @@ if os.path.exists(static_path):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import socket
+    
+    def is_port_in_use(port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('localhost', port)) == 0
+
+    base_port = 8000
+    while is_port_in_use(base_port) and base_port < 8010:
+        base_port += 1
+    
+    print(f"\n[DASHBOARD] Access the Node UI at: http://127.0.0.1:{base_port}")
+    uvicorn.run(app, host="0.0.0.0", port=base_port)
