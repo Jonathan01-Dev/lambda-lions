@@ -216,18 +216,26 @@ class ArchipelDashboard(App):
                 client = TCPClient(self.node, host, int(port))
                 peer_id = await client.connect() # This will also add it to the table
                 await client.close()
+                
                 self.selected_peer_id = peer_id
                 self.write_to_log(f"[bold green]Success[/bold green]: Handshake with {host}:{port} complete.")
+                
+                # Refresh list and then force selection
                 self.update_peer_list()
                 
-                # Highlight in list
+                # Small delay to let the ListView populate its children
+                await asyncio.sleep(0.1)
                 list_view = self.query_one("#peer-list", ListView)
                 for i, item in enumerate(list_view.children):
                     if item.id == f"peer-{peer_id}":
                         list_view.index = i
                         break
             except Exception as e:
-                self.write_to_log(f"[bold red]Connect Failed[/bold red]: {e}")
+                err_msg = str(e)
+                if "10061" in err_msg or "1225" in err_msg:
+                    self.write_to_log(f"[bold red]Connect Failed[/bold red]: Peer refused connection. Check IP/Port on the other machine.")
+                else:
+                    self.write_to_log(f"[bold red]Connect Failed[/bold red]: {e}")
             return
 
         elif text.startswith("/gemini ") or text.startswith("/ask ") or text.startswith("@archipel-ai "):
