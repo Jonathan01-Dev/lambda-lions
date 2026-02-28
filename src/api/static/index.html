@@ -413,6 +413,15 @@
 
         <footer>
             <div class="composer">
+                <button onclick="triggerFileSelect()"
+                    style="background:transparent; border:none; color:var(--text-dim); cursor:pointer; padding:0 10px; transition:var(--transition);"><svg
+                        width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
+                        </path>
+                    </svg></button>
+                <input type="file" id="file-input" style="display:none" onchange="uploadAndSendFile(this)">
                 <input type="text" id="chat-input" placeholder="Type an encrypted message..."
                     onkeydown="if(event.key==='Enter') send()">
             </div>
@@ -434,7 +443,7 @@
         </div>
 
         <div class="card">
-            <div class="card-label">Active Transfers</div>
+            <div class="card-label">Transfer Hub</div>
             <div id="transfer-zone">
                 <div style="font-size:12px; color:var(--text-dim);">No active chunk transfers</div>
             </div>
@@ -442,7 +451,7 @@
 
         <div class="card" style="margin-top:auto; border-color:var(--magenta);">
             <div class="card-label" style="color:var(--magenta);">Security Info</div>
-            <p style="font-size:11px; line-height:1.5; color:var(--text-dim);">All traffic is chiffré using X25519 &
+            <p style="font-size:11px; line-height:1.5; color:var(--text-dim);">All traffic is encrypted using X25519 &
                 AES-256-GCM session keys rotated periodically.</p>
         </div>
     </div>
@@ -535,7 +544,7 @@
             zone.innerHTML = items.map(t => `
                 <div class="progress-container">
                     <div class="progress-label">
-                        <span>${t.file}</span>
+                        <span style="font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;">${t.file}</span>
                         <span>${t.progress || 100}%</span>
                     </div>
                     <div class="progress-track"><div class="progress-fill" style="width:${t.progress || 100}%"></div></div>
@@ -547,7 +556,7 @@
             const input = document.getElementById('chat-input');
             const val = input.value.trim();
             if (!val || !selectedPeer) {
-                if (!selectedPeer) alert("Please select a target node.");
+                if (!selectedPeer) alert("Please select a target node first.");
                 return;
             }
             input.value = '';
@@ -556,6 +565,37 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ peer_id: selectedPeer, content: val })
             });
+        }
+
+        function triggerFileSelect() {
+            if (!selectedPeer) { alert("Please select a target node first."); return; }
+            document.getElementById('file-input').click();
+        }
+
+        async function uploadAndSendFile(input) {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            console.log("Uploading " + file.name + " to API...");
+            const uploadRes = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!uploadRes.ok) { alert("Upload to local node failed."); return; }
+            const uploadData = await uploadRes.json();
+
+            console.log("Triggering P2P transfer of " + file.name);
+            await fetch('/api/send-file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ peer_id: selectedPeer, content: uploadData.local_path })
+            });
+
+            input.value = ''; // Reset input
         }
 
         async function askGemini() {

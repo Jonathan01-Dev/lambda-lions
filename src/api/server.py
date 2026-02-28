@@ -1,11 +1,12 @@
 import asyncio
 import logging
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, File, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import os
+import shutil
 
 from src.core.node import Node
 from src.protocol.packet import Packet
@@ -15,6 +16,10 @@ from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("archipel-api")
+
+UPLOAD_DIR = "uploads"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
 
 app = FastAPI(title="Archipel High-Fidelity API")
 
@@ -148,6 +153,30 @@ async def send_message(req: SendMessageRequest):
 @app.get("/api/messages")
 async def get_messages():
     return messages
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
+    try:
+        file_path = os.path.join(UPLOAD_DIR, file.filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        log_system(f"File uploaded to node: {file.filename}")
+        return {"filename": file.filename, "local_path": os.path.abspath(file_path)}
+    except Exception as e:
+        log_system(f"Upload failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/send-file")
+async def send_file(req: SendMessageRequest):
+    # Reuse SendMessageRequest, content is the local_path
+    log_system(f"Starting P2P transfer of {os.path.basename(req.content)} to {req.peer_id[:8]}")
+    try:
+        # Node's send_file is async
+        asyncio.create_task(node.send_file(req.peer_id, req.content))
+        return {"status": "transfer_started"}
+    except Exception as e:
+        log_system(f"P2P Send failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/ask-ai")
 async def ask_ai(req: SendMessageRequest):
