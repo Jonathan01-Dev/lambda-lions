@@ -24,6 +24,7 @@ class Node:
         self.tcp_server = TCPServer(self, port=self.tcp_port)
         self.sessions = {} # peer_id_hex -> Session object
         self._sent_greetings = set() # To avoid greeting multiple times in same session
+        self._ping_task = None
 
     async def start(self):
         """Start the node (multicast listener, TCP server, etc.)."""
@@ -32,6 +33,8 @@ class Node:
         self._server_task = asyncio.create_task(self.tcp_server.start())
         # Start discovery
         await self.discovery.start()
+        # Start background ping loop for guaranteed connectivity
+        self._ping_task = asyncio.create_task(self._ping_loop())
         
         # Connect to bootstrap peer if provided
         if self.bootstrap_peer:
@@ -48,27 +51,49 @@ class Node:
                 logger.error(f"Failed to connect to bootstrap peer {self.bootstrap_peer}: {e}")
 
     async def on_peer_discovered(self, peer_id_hex: str):
-        """Called when a new peer is found via Multicast UDP."""
-        if peer_id_hex in self._sent_greetings:
-            return
-            
-        self._sent_greetings.add(peer_id_hex)
-        logger.info(f"Automatically connecting to new peer: {peer_id_hex[:8]}...")
+        """Guaranteed connection when a peer is discovered."""
+        from src.protocol.packet import Packet
+        from src.protocol import types
         
-        # Send a secure greeting
+        # If we already have a session, no need to re-handshake unless it's been a while
+        # But for "Forced" connectivity, we try to send a PING at least
         try:
-            greeting = f"Secure Hello from {self.name}!".encode()
-            await self.send_to_peer(peer_id_hex, greeting)
+            ping = Packet(types.PING, self.node_id, b"DISCOVERY_PING")
+            await self.send_to_peer(peer_id_hex, ping.serialize())
+            log_msg = f"Forced discovery ping sent to {peer_id_hex[:8]}"
+            logger.info(log_msg)
         except Exception as e:
-            logger.error(f"Failed auto-greeting to {peer_id_hex[:8]}: {e}")
-            # Remove from set so we can retry later if needed
-            self._sent_greetings.discard(peer_id_hex)
+            logger.debug(f"Auto-handshake failed for {peer_id_hex[:8]}: {e}")
 
     async def stop(self):
         """Stop the node gracefully."""
+        if self._ping_task:
+            self._ping_task.cancel()
         await self.discovery.stop()
         await self.tcp_server.stop()
         self._server_task.cancel()
+
+    async def _ping_loop(self):
+        """Periodically ping all known peers to ensure connectivity."""
+        import asyncio
+        from src.protocol.packet import Packet
+        from src.protocol import types
+        
+        while True:
+            try:
+                await asyncio.sleep(15)
+                peers = self.peer_table.list_peers()
+                if not peers:
+                    continue
+                
+                ping_packet = Packet(types.PING, self.node_id, b"PING")
+                serialized = ping_packet.serialize()
+                
+                for p_id, host, port in peers:
+                    # We send background tasks for non-blocking pings
+                    asyncio.create_task(self.send_to_peer(p_id, serialized))
+            except Exception as e:
+                logger.debug(f"Error in ping loop: {e}")
 
     def on_message_received(self, sender_id: str, data: bytes):
         """Callback for TCPServer when a decrypted message is received."""

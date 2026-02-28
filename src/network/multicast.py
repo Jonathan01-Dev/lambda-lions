@@ -35,19 +35,45 @@ class MulticastDiscovery:
         self.transport = None
         self.protocol = None
 
+    def _get_all_ips(self):
+        """Get all local IPv4 addresses to join multicast on each interface."""
+        ips = []
+        try:
+            # On Windows, we can use socket's getaddrinfo for better enumeration
+            hostname = socket.gethostname()
+            for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
+                ip = info[4][0]
+                if ip not in ips and not ip.startswith("127."):
+                    ips.append(ip)
+        except Exception as e:
+            logger.warning(f"Failed to enumerate local IPs: {e}")
+        return ips
+
     def _create_socket(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         
-        # On Windows, we bind to '' (0.0.0.0)
+        # Bind to all interfaces
         sock.bind(('', MCAST_PORT))
         
-        # Join multicast group on all interfaces
-        mreq = struct.pack("4s4s", socket.inet_aton(MCAST_GRP), socket.inet_aton("0.0.0.0"))
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        # Join multicast group on all detected interfaces
+        # This is vital for Wi-Fi Direct / Ad-hoc interfaces
+        ips = self._get_all_ips()
+        for ip in ips:
+            try:
+                mreq = struct.pack("4s4s", socket.inet_aton(MCAST_GRP), socket.inet_aton(ip))
+                sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+                logger.info(f"Multicast membership added on interface: {ip}")
+            except Exception as e:
+                logger.debug(f"Could not add multicast on interface {ip}: {e}")
         
-        # TTL and Loopback (Crucial for same-PC testing)
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+        # Always join on 0.0.0.0 as fallback
+        try:
+            mreq = struct.pack("4s4s", socket.inet_aton(MCAST_GRP), socket.inet_aton("0.0.0.0"))
+            sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        except: pass
+
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 4)
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
         return sock
 
@@ -62,11 +88,9 @@ class MulticastDiscovery:
                 sock=sock
             )
             self._send_task = asyncio.create_task(self._send_loop())
-            logger.info(f"Discovery service started on {MCAST_GRP}:{MCAST_PORT}")
-            # info(f"Discovery active on port {MCAST_PORT}") # Less spam in UI
+            logger.info(f"Aggressive Discovery started on {MCAST_GRP}:{MCAST_PORT}")
         except Exception as e:
             logger.error(f"Failed to start discovery service: {e}")
-            info(f"[Error] Discovery failed: {e}")
 
     async def stop(self):
         self.running = False
@@ -77,10 +101,10 @@ class MulticastDiscovery:
         logger.info("Discovery service stopped")
 
     async def _send_loop(self):
-        # Separate socket for sending to avoid binding issues
+        # Socket for sending
         send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        send_sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
-        send_sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
+        send_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1) # Enable broadcast
+        send_sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 4)
         
         payload = struct.pack("!H", self.tcp_port)
         packet = Packet(HELLO, self.node_id, payload)
@@ -88,29 +112,30 @@ class MulticastDiscovery:
 
         while self.running:
             try:
+                # 1. Send Multicast
                 send_sock.sendto(data, (MCAST_GRP, MCAST_PORT))
-                # Periodic log to show we are still alive
-                # logger.debug(f"Broadcasted HELLO for port {self.tcp_port}")
-                await asyncio.sleep(5)
+                
+                # 2. Send Subnet Broadcast (Aggressive Fallback)
+                # We send to 255.255.255.255 to reach everyone on local segments
+                send_sock.sendto(data, ('<broadcast>', MCAST_PORT))
+                
+                # Faster interval for hackathon discovery
+                await asyncio.sleep(4)
             except Exception as e:
-                logger.error(f"Error sending discovery packet: {e}")
-                await asyncio.sleep(2)
+                logger.error(f"Error in discovery send: {e}")
+                await asyncio.sleep(4)
 
     def _handle_packet(self, data, addr):
         try:
-            # logger.debug(f"Received UDP packet from {addr}, len={len(data)}")
             packet = Packet.deserialize(data)
             if packet.type == HELLO:
-                # Filter out ourselves
                 if packet.node_id == self.node_id:
                     return 
                 
                 peer_port = struct.unpack("!H", packet.payload)[0]
                 peer_host = addr[0]
                 
-                # Use a specific log format for S1 demo
-                info(f"[[bold green]Discovery[/bold green]] New Peer: [cyan]{packet.node_id.hex()[:8]}[/cyan] at [magenta]{peer_host}:{peer_port}[/magenta]")
-                
+                # Register in table
                 self.peer_table.add_peer(
                     packet.node_id.hex(),
                     peer_host,
