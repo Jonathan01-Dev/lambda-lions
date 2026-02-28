@@ -24,7 +24,7 @@ class TCPServer:
         try:
             # --- Handshake Phase ---
             # 1. Wait for Initiator's Ed25519 PublicKey
-            header = await reader.readexactly(5) # MAGIC + 0x01
+            header = await asyncio.wait_for(reader.readexactly(5), timeout=10.0) # MAGIC + 0x01
             magic, pkt_type = struct.unpack("!IB", header)
             
             if magic != MAGIC or pkt_type != 0x01:
@@ -32,11 +32,11 @@ class TCPServer:
                 writer.close()
                 return
 
-            remote_ed_pk_bytes = await reader.readexactly(32)
+            remote_ed_pk_bytes = await asyncio.wait_for(reader.readexactly(32), timeout=10.0)
             
             # 2. Send our Ed25519 PublicKey
             writer.write(struct.pack("!IB", MAGIC, 0x01) + self.node.vk.encode())
-            await writer.drain()
+            await asyncio.wait_for(writer.drain(), timeout=10.0)
             
             # 3. Derive Session Key
             from nacl.signing import VerifyKey

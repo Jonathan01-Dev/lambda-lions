@@ -9,6 +9,8 @@ from src.crypto.session import Session
 logger = logging.getLogger(__name__)
 
 
+NETWORK_TIMEOUT = 10.0
+
 class TCPClient:
     def __init__(self, node, host, port=7777):
         self.node = node
@@ -21,22 +23,29 @@ class TCPClient:
     async def connect(self):
         """Connect and perform Archipel handshake."""
         logger.info(f"Connecting to {self.host}:{self.port}...")
-        self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
+        try:
+            self.reader, self.writer = await asyncio.wait_for(
+                asyncio.open_connection(self.host, self.port),
+                timeout=NETWORK_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Connection timeout to {self.host}:{self.port}")
+            raise ConnectionError(f"Connection timeout to {self.host}:{self.port}")
         
         try:
             # --- Handshake Phase ---
             # 1. Send our Ed25519 PublicKey
             self.writer.write(struct.pack("!IB", MAGIC, 0x01) + self.node.vk.encode())
-            await self.writer.drain()
+            await asyncio.wait_for(self.writer.drain(), timeout=NETWORK_TIMEOUT)
             
             # 2. Wait for Responder's Ed25519 PublicKey
-            header = await self.reader.readexactly(5)
+            header = await asyncio.wait_for(self.reader.readexactly(5), timeout=NETWORK_TIMEOUT)
             magic, pkt_type = struct.unpack("!IB", header)
             
             if magic != MAGIC or pkt_type != 0x01:
                 raise ValueError("Invalid handshake response from peer")
                 
-            remote_ed_pk_bytes = await self.reader.readexactly(32)
+            remote_ed_pk_bytes = await asyncio.wait_for(self.reader.readexactly(32), timeout=NETWORK_TIMEOUT)
             
             # 3. Derive Session Key
             from nacl.signing import VerifyKey
@@ -61,6 +70,7 @@ class TCPClient:
             )
             
             logger.info(f"Secure session established with {peer_id[:16]}... at {self.host}:{self.port}")
+            return peer_id
             
         except ConnectionRefusedError:
             logger.error(f"Connection refused to {self.host}:{self.port}. Is the other node running?")

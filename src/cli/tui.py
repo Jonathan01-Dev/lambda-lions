@@ -120,6 +120,12 @@ class ArchipelDashboard(App):
                 # Use call_from_thread to ensure thread safety if needed, 
                 # although textual is async, the callback might come from a task
                 self.call_from_thread(self.write_to_log, f"[cyan]{sender_id[:8]}[/cyan]: {msg}")
+                
+                # Auto-select if nothing is selected
+                if not self.selected_peer_id:
+                    self.selected_peer_id = sender_id
+                    self.call_from_thread(self.update_peer_list)
+
                 original_on_message(sender_id, data)
                 
             self.node.on_message_received = patched_on_message
@@ -178,6 +184,10 @@ class ArchipelDashboard(App):
             
         if current_selection is not None and current_selection < len(list_view):
             list_view.index = current_selection
+        elif len(list_view) > 0 and self.selected_peer_id is None:
+            # Auto-select first peer if none selected
+            list_view.index = 0
+            self.selected_peer_id = peers[0][0]
 
     def on_list_view_selected(self, event: ListView.Selected):
         """Update selected peer ID when a list item is chosen."""
@@ -204,10 +214,18 @@ class ArchipelDashboard(App):
                     host = peer_addr
                     port = 7777
                 client = TCPClient(self.node, host, int(port))
-                await client.connect() # This will also add it to the table
+                peer_id = await client.connect() # This will also add it to the table
                 await client.close()
+                self.selected_peer_id = peer_id
                 self.write_to_log(f"[bold green]Success[/bold green]: Handshake with {host}:{port} complete.")
                 self.update_peer_list()
+                
+                # Highlight in list
+                list_view = self.query_one("#peer-list", ListView)
+                for i, item in enumerate(list_view.children):
+                    if item.id == f"peer-{peer_id}":
+                        list_view.index = i
+                        break
             except Exception as e:
                 self.write_to_log(f"[bold red]Connect Failed[/bold red]: {e}")
             return
@@ -238,19 +256,11 @@ class ArchipelDashboard(App):
                 self.write_to_log(f"[bold red]File not found[/bold red]: {filepath}")
                 return
                 
-            self.write_to_log(f"[bold yellow]Transfer[/bold yellow]: Sending '{filepath}' to {self.selected_peer_id[:8]}...")
+            self.write_to_log(f"[bold yellow]Transfer[/bold yellow]: Sending '{filepath}' to {self.selected_peer_id[:8]} [italic](Chunked)...[/italic]")
             try:
-                filename = os.path.basename(filepath)
-                file_size = os.path.getsize(filepath)
-                if file_size < 50 * 1024 * 1024:
-                    with open(filepath, "rb") as f:
-                        file_data = f.read()
-                    
-                    header = f"/file {filename} ".encode()
-                    await self.node.send_to_peer(self.selected_peer_id, header + file_data)
-                    self.write_to_log(f"[bold green]Success[/bold green]: File '{filename}' sent successfully!")
-                else:
-                    self.write_to_log(f"[bold red]Error[/bold red]: File too large for direct send (>50MB).")
+                # Use the new chunked transfer logic
+                asyncio.create_task(self.node.send_file(self.selected_peer_id, filepath))
+                self.write_to_log(f"[bold green]System[/bold green]: Manifest sent. Transfer in progress.")
             except Exception as e:
                 self.write_to_log(f"[bold red]Transfer Failed[/bold red]: {e}")
             return
@@ -261,7 +271,10 @@ class ArchipelDashboard(App):
             
         try:
             self.write_to_log(f"[bold green]Me[/bold green]: {text}")
-            await self.node.send_to_peer(self.selected_peer_id, text.encode())
+            from src.protocol.packet import Packet
+            from src.protocol import types
+            packet = Packet(types.MSG, self.node.node_id, text.encode())
+            await self.node.send_to_peer(self.selected_peer_id, packet.serialize())
         except Exception as e:
             self.write_to_log(f"[bold red]Send Failed[/bold red]: {e}")
 
