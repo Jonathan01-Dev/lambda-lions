@@ -7,8 +7,22 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.binding import Binding
 from textual.reactive import reactive
 
+import socket
 from src.core.node import Node
 from src.network.peer_table import PeerTable
+
+def get_lan_ip():
+    """Get the local LAN IP address."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
 
 class ArchipelDashboard(App):
     """A Textual app to manage Archipel Node."""
@@ -109,8 +123,10 @@ class ArchipelDashboard(App):
             self.node.on_message_received = patched_on_message
             
             await self.node.start()
-            self.query_one(Header).query_one(Static).update(f"Archipel Node | ID: {self.node.node_id.hex()[:16]}...")
+            lan_ip = get_lan_ip()
+            self.query_one(Header).query_one(Static).update(f"Archipel Node | ID: {self.node.node_id.hex()[:16]}... | IP: {lan_ip}:{self.port}")
             self.write_to_log("[bold green]System[/bold green]: Node started and ready.")
+            self.write_to_log(f"[bold blue]Hint[/bold blue]: To connect another PC, type: [italic]/connect {lan_ip}:{self.port}[/italic] on the other machine.")
         except OSError as e:
             if "address already in use" in str(e).lower() or "10048" in str(e):
                 self.write_to_log(f"[bold red]CRITICAL ERROR[/bold red]: Port {self.port} is already in use!")
