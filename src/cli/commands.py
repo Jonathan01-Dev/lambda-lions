@@ -31,7 +31,18 @@ def show():
     console.print(f"\n[bold green]Your Archipel Identity[/bold green]")
     console.print(f"Node ID (Full):  [cyan]{node_id}[/cyan]")
     console.print(f"Node ID (Short): [bold]{node_id[:16]}[/bold]")
-    console.print(f"Public Key:      [magenta]{node.vk.encode().hex()}[/magenta]\n")
+    console.print(f"Public Key:      [magenta]{node.vk.encode().hex()}[/magenta]")
+    
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    console.print(f"Local IP:        [yellow]{IP}[/yellow]\n")
 
 
 # --- NODE GROUP ---
