@@ -23,9 +23,10 @@ class TCPServer:
         
         try:
             # --- Handshake Phase ---
-            # 1. Wait for Initiator's Ed25519 PublicKey
-            header = await asyncio.wait_for(reader.readexactly(5), timeout=10.0) # MAGIC + 0x01
-            magic, pkt_type = struct.unpack("!IB", header)
+            # 1. Wait for Initiator's Ed25519 PublicKey + Port
+            # Header: MAGIC(4b) + TYPE(1b) + PORT(2b)
+            header = await asyncio.wait_for(reader.readexactly(7), timeout=10.0) 
+            magic, pkt_type, initiator_port = struct.unpack("!IBH", header)
             
             if magic != MAGIC or pkt_type != 0x01:
                 logger.warning(f"Invalid handshake from {addr}")
@@ -34,8 +35,8 @@ class TCPServer:
 
             remote_ed_pk_bytes = await asyncio.wait_for(reader.readexactly(32), timeout=10.0)
             
-            # 2. Send our Ed25519 PublicKey
-            writer.write(struct.pack("!IB", MAGIC, 0x01) + self.node.vk.encode())
+            # 2. Send our Ed25519 PublicKey + Port
+            writer.write(struct.pack("!IBH", MAGIC, 0x01, self.node.tcp_port) + self.node.vk.encode())
             await asyncio.wait_for(writer.drain(), timeout=10.0)
             
             # 3. Derive Session Key
@@ -52,22 +53,13 @@ class TCPServer:
             peer_id = remote_ed_pk_bytes.hex()
             self.node.sessions[peer_id] = session
             
-            # Record peer in table (but avoid overwriting their listener port with ephemeral port)
-            existing = self.node.peer_table.get_peer(peer_id)
-            if existing: # Update last_seen only
-                self.node.peer_table.add_peer(
-                    peer_id, 
-                    existing[0], 
-                    existing[1], 
-                    asyncio.get_event_loop().time()
-                )
-            else:
-                self.node.peer_table.add_peer(
-                    peer_id, 
-                    addr[0], 
-                    7777, # Default Archipel port, as we don't know their listening port
-                    asyncio.get_event_loop().time()
-                )
+            # Record peer in table (using the port they just told us!)
+            self.node.peer_table.add_peer(
+                peer_id, 
+                addr[0], 
+                initiator_port, 
+                asyncio.get_event_loop().time()
+            )
             
             success(f"Secure session established with remote node {peer_id[:16]}... at {addr}")
             logger.info(f"Handshake complete. Local node ID: {self.node.vk.encode().hex()[:16]}... Remote node ID: {peer_id[:16]}...")

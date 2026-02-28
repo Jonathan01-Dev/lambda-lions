@@ -34,13 +34,13 @@ class TCPClient:
         
         try:
             # --- Handshake Phase ---
-            # 1. Send our Ed25519 PublicKey
-            self.writer.write(struct.pack("!IB", MAGIC, 0x01) + self.node.vk.encode())
+            # 1. Send our Ed25519 PublicKey + Port
+            self.writer.write(struct.pack("!IBH", MAGIC, 0x01, self.node.tcp_port) + self.node.vk.encode())
             await asyncio.wait_for(self.writer.drain(), timeout=NETWORK_TIMEOUT)
             
-            # 2. Wait for Responder's Ed25519 PublicKey
-            header = await asyncio.wait_for(self.reader.readexactly(5), timeout=NETWORK_TIMEOUT)
-            magic, pkt_type = struct.unpack("!IB", header)
+            # 2. Wait for Responder's Header (7 bytes: MAGIC + TYPE + PORT)
+            header = await asyncio.wait_for(self.reader.readexactly(7), timeout=NETWORK_TIMEOUT)
+            magic, pkt_type, remote_port = struct.unpack("!IBH", header)
             
             if magic != MAGIC or pkt_type != 0x01:
                 raise ValueError("Invalid handshake response from peer")

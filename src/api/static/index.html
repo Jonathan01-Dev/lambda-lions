@@ -1,122 +1,181 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Archipel | P2P Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <title>Archipel | Ultra-Premium Workspace</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Outfit:wght@400;700&family=JetBrains+Mono&display=swap"
+        rel="stylesheet">
     <style>
         :root {
-            --bg: #0f111a;
-            --sidebar-bg: rgba(22, 24, 34, 0.8);
-            --card-bg: rgba(30, 32, 48, 0.6);
-            --accent: #2ac3de;
-            --accent-glow: rgba(42, 195, 222, 0.3);
+            --bg: #0d0f14;
+            --sidebar: rgba(17, 20, 28, 0.9);
+            --card: rgba(30, 32, 44, 0.75);
+            --accent: #7aa2f7;
+            --accent-glow: rgba(122, 162, 247, 0.4);
+            --magenta: #bb9af7;
+            --cyan: #7dcfff;
+            --green: #9ece6a;
+            --red: #f7768e;
             --text: #c0caf5;
-            --text-dim: #7982a9;
-            --glass: blur(12px) saturate(180%);
+            --text-dim: #565f89;
+            --border: rgba(255, 255, 255, 0.1);
+            --glass: blur(20px) saturate(180%);
+            --transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             background: var(--bg);
+            background-image:
+                radial-gradient(circle at 15% 15%, rgba(122, 162, 247, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(187, 154, 247, 0.08) 0%, transparent 40%);
             color: var(--text);
             height: 100vh;
             overflow: hidden;
             display: flex;
         }
 
-        /* Glass sidebar */
+        /* --- SIDEBAR --- */
         #sidebar {
-            width: 320px;
-            background: var(--sidebar-bg);
+            width: 300px;
+            background: var(--sidebar);
             backdrop-filter: var(--glass);
-            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            padding: 24px;
+            z-index: 100;
         }
 
-        .logo {
+        .brand {
+            padding: 40px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand-logo {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--accent), var(--magenta));
+            border-radius: 12px;
+            box-shadow: 0 0 30px var(--accent-glow);
+            position: relative;
+        }
+
+        .brand-name {
             font-family: 'Outfit', sans-serif;
             font-size: 24px;
             font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 40px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            letter-spacing: -1px;
+            background: linear-gradient(to right, #fff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .logo-icon {
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, var(--accent), #7aa2f7);
-            border-radius: 8px;
-            box-shadow: 0 0 15px var(--accent-glow);
+        .nav-section {
+            padding: 0 20px;
+            flex-grow: 1;
         }
 
-        .section-title {
+        .nav-label {
+            font-size: 10px;
             text-transform: uppercase;
-            font-size: 11px;
             letter-spacing: 2px;
             color: var(--text-dim);
-            margin-bottom: 16px;
+            padding: 0 12px 16px;
+            font-weight: 700;
         }
 
         #peer-list {
             list-style: none;
-            flex-grow: 1;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .peer-item {
-            padding: 12px 16px;
-            border-radius: 12px;
-            margin-bottom: 8px;
+            padding: 14px;
+            border-radius: 16px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: var(--transition);
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
             border: 1px solid transparent;
+            background: rgba(255, 255, 255, 0.02);
         }
 
         .peer-item:hover {
             background: rgba(255, 255, 255, 0.05);
+            transform: scale(1.02);
+            border-color: var(--border);
         }
 
         .peer-item.active {
-            background: rgba(42, 195, 222, 0.1);
-            border-color: rgba(42, 195, 222, 0.3);
+            background: rgba(122, 162, 247, 0.15);
+            border-color: rgba(122, 162, 247, 0.3);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
         }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background: #4fd1c5;
-            border-radius: 50%;
-            box-shadow: 0 0 10px rgba(79, 209, 197, 0.5);
+        .peer-avatar {
+            width: 44px;
+            height: 44px;
+            background: var(--card);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono';
+            font-size: 16px;
+            color: #fff;
+            border: 1px solid var(--border);
+            flex-shrink: 0;
         }
 
-        /* Main Content */
-        #main-content {
+        .peer-info {
+            min-width: 0;
+        }
+
+        .peer-name {
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .peer-status {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        /* --- MAIN CONTENT --- */
+        #workspace {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            background: radial-gradient(circle at top right, rgba(42, 195, 222, 0.05), transparent);
+            position: relative;
+            background: rgba(0, 0, 0, 0.2);
         }
 
         header {
-            padding: 24px 40px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            height: 90px;
+            padding: 0 40px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.03);
+            background: rgba(13, 15, 20, 0.7);
+            backdrop-filter: blur(12px);
         }
 
-        #chat-area {
+        #chat-container {
             flex-grow: 1;
             padding: 40px;
             overflow-y: auto;
@@ -125,217 +184,406 @@
             gap: 20px;
         }
 
-        .message {
-            max-width: 70%;
-            padding: 16px 20px;
+        .msg-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 75%;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .msg-group.sent {
+            align-self: flex-end;
+        }
+
+        .msg-group.received {
+            align-self: flex-start;
+        }
+
+        .msg-bubble {
+            padding: 16px 22px;
             border-radius: 20px;
+            font-size: 15px;
             line-height: 1.5;
             position: relative;
-            animation: slideUp 0.3s ease-out;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
         }
 
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .sent .msg-bubble {
+            background: linear-gradient(135deg, var(--accent), #3d59a1);
+            color: #fff;
+            border-bottom-right-radius: 4px;
         }
 
-        .message.received {
-            background: var(--card-bg);
-            align-self: flex-start;
+        .received .msg-bubble {
+            background: var(--card);
+            border: 1px solid var(--border);
             border-bottom-left-radius: 4px;
         }
 
-        .message.sent {
-            background: linear-gradient(135deg, var(--accent), #1f2937);
-            color: white;
-            align-self: flex-end;
-            border-bottom-right-radius: 4px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        .ai .msg-bubble {
+            background: rgba(187, 154, 247, 0.1);
+            border: 1px solid rgba(187, 154, 247, 0.3);
+            color: var(--magenta);
+            border-bottom-left-radius: 4px;
         }
 
+        /* --- CONSOLE / LOGS --- */
+        #console {
+            height: 200px;
+            background: rgba(5, 5, 8, 0.95);
+            border-top: 1px solid var(--border);
+            font-family: 'JetBrains Mono', monospace;
+            padding: 16px 24px;
+            overflow-y: auto;
+            font-size: 12px;
+            color: #9ece6a;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .log-entry {
+            margin-bottom: 6px;
+            border-left: 3px solid var(--accent);
+            padding-left: 10px;
+        }
+
+        .log-time {
+            color: var(--text-dim);
+            font-size: 10px;
+            margin-right: 12px;
+        }
+
+        /* --- FOOTER / INPUT --- */
         footer {
             padding: 24px 40px;
-            background: rgba(15, 17, 26, 0.8);
-            backdrop-filter: var(--glass);
-        }
-
-        .input-wrapper {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 8px 16px;
             display: flex;
+            gap: 16px;
+            background: rgba(13, 15, 20, 0.8);
+        }
+
+        .composer {
+            flex-grow: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            display: flex;
+            padding: 8px 16px;
             align-items: center;
-            gap: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: border-color 0.2s;
         }
 
-        .input-wrapper:focus-within {
-            border-color: var(--accent);
-        }
-
-        input {
+        .composer input {
             background: transparent;
             border: none;
-            color: white;
-            padding: 12px;
+            color: #fff;
+            padding: 10px;
             flex-grow: 1;
             outline: none;
-            font-size: 15px;
+            font-size: 16px;
         }
 
-        .btn {
+        .btn-send {
             background: var(--accent);
-            color: var(--bg);
             border: none;
-            padding: 10px 20px;
-            border-radius: 12px;
-            font-weight: 600;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--bg);
         }
 
-        .btn:hover { transform: scale(1.02); }
+        .btn-send:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
 
+        /* --- INSPECTOR --- */
+        #inspector {
+            width: 320px;
+            background: var(--sidebar);
+            backdrop-filter: var(--glass);
+            border-left: 1px solid var(--border);
+            padding: 40px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+        }
+
+        .card-label {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .card-value {
+            font-weight: 600;
+            font-size: 14px;
+            word-break: break-all;
+            color: var(--cyan);
+        }
+
+        .progress-container {
+            margin-top: 12px;
+        }
+
+        .progress-label {
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .progress-track {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
     </style>
 </head>
+
 <body>
     <div id="sidebar">
-        <div class="logo">
-            <div class="logo-icon"></div>
-            <span>ARCHIPEL</span>
+        <div class="brand">
+            <div class="brand-logo"></div>
+            <div class="brand-name">Archipel</div>
         </div>
-        
-        <div class="section-title">En réseaux</div>
-        <ul id="peer-list">
-            <!-- Peers go here -->
-        </ul>
-
-        <div class="section-title" style="margin-top: 40px">Actions</div>
-        <button class="btn" onclick="showConnectModal()" style="width: 100%">Connecter Ad-hoc</button>
+        <div class="nav-section">
+            <div class="nav-label">Protocol Nodes</div>
+            <ul id="peer-list"></ul>
+        </div>
+        <div style="padding: 24px; border-top: 1px solid var(--border);">
+            <button onclick="manualConnect()"
+                style="width:100%; padding:12px; border-radius:12px; background:transparent; border:1px solid var(--border); color:#fff; cursor:pointer; font-weight:600;">Connect
+                Manual</button>
+        </div>
     </div>
 
-    <div id="main-content">
+    <div id="workspace">
         <header>
-            <div id="active-peer-info">
-                <h2 id="current-peer-name" style="font-family: 'Outfit'; font-size: 20px">Sélectionnez un peer</h2>
-                <p id="current-peer-addr" style="font-size: 13px; color: var(--text-dim)">En attente de connexion...</p>
+            <div>
+                <h2 id="target-name" style="font-family:'Outfit';">Node Observer</h2>
+                <p id="target-status" style="font-size:13px; color:var(--text-dim);">Listening for P2P Handshakes...</p>
             </div>
-            <div class="actions">
-                <button class="btn" onclick="askAi()" style="background: transparent; border: 1px solid var(--accent); color: var(--accent)">Ask AI</button>
+            <div>
+                <button onclick="askGemini()"
+                    style="background:rgba(187,154,247,0.1); border:1px solid var(--magenta); color:var(--magenta); padding:10px 20px; border-radius:12px; cursor:pointer; font-weight:700;">Ask
+                    Gemini AI ✧</button>
             </div>
         </header>
 
-        <div id="chat-area">
-            <!-- Messages go here -->
+        <div id="chat-container"></div>
+
+        <div id="console">
+            <div class="log-entry"><span class="log-time">00:00:00</span> <span
+                    style="color:var(--accent);">[SYSTEM]</span> Archipel Web Observer v2.0 Started...</div>
         </div>
 
         <footer>
-            <div class="input-wrapper">
-                <input type="text" id="chat-input" placeholder="Écrivez un message sécurisé...">
-                <button class="btn" onclick="sendMessage()">Envoyer</button>
+            <div class="composer">
+                <input type="text" id="chat-input" placeholder="Type an encrypted message..."
+                    onkeydown="if(event.key==='Enter') send()">
             </div>
+            <button class="btn-send" onclick="send()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
         </footer>
     </div>
 
-    <script>
-        let selectedPeerId = null;
-        let messages = [];
+    <div id="inspector">
+        <div class="card">
+            <div class="card-label">Your Identity</div>
+            <div class="card-value" id="node-id">---</div>
+            <div style="font-size:11px; color:var(--text-dim); margin-top:4px;" id="node-addr">Status: Waiting...</div>
+        </div>
 
-        async function updateStatus() {
+        <div class="card">
+            <div class="card-label">Active Transfers</div>
+            <div id="transfer-zone">
+                <div style="font-size:12px; color:var(--text-dim);">No active chunk transfers</div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:auto; border-color:var(--magenta);">
+            <div class="card-label" style="color:var(--magenta);">Security Info</div>
+            <p style="font-size:11px; line-height:1.5; color:var(--text-dim);">All traffic is chiffré using X25519 &
+                AES-256-GCM session keys rotated periodically.</p>
+        </div>
+    </div>
+
+    <script>
+        let selectedPeer = null;
+        let lastMsgLen = 0;
+        let lastLogLen = 0;
+
+        async function init() {
             const res = await fetch('/api/status');
             const data = await res.json();
-            // Update node ID etc
+            document.getElementById('node-id').innerText = data.node_id ? data.node_id.slice(0, 32) + "..." : "Offline";
+            document.getElementById('node-addr').innerText = `Active on Port ${data.port || '---'}`;
+
+            loop();
         }
 
-        async function refreshPeers() {
+        async function loop() {
+            try {
+                await Promise.all([updatePeers(), updateChat(), updateLogs(), updateTransfers()]);
+            } catch (e) { console.error("Poll error", e); }
+            setTimeout(loop, 1000);
+        }
+
+        async function updatePeers() {
             const res = await fetch('/api/peers');
             const peers = await res.json();
             const list = document.getElementById('peer-list');
-            list.innerHTML = '';
-            peers.forEach(peer => {
-                const li = document.createElement('li');
-                li.className = `peer-item ${selectedPeerId === peer.id ? 'active' : ''}`;
-                li.onclick = () => selectPeer(peer);
-                li.innerHTML = `
-                    <div class="status-dot"></div>
-                    <div>
-                        <div style="font-weight: 600; font-size: 14px">${peer.id.slice(0, 8)}</div>
-                        <div style="font-size: 12px; color: var(--text-dim)">${peer.host}:${peer.port}</div>
+            list.innerHTML = peers.map(p => `
+                <li class="peer-item ${selectedPeer === p.id ? 'active' : ''}" onclick="selectPeer('${p.id}', '${p.short_id}', '${p.host}:${p.port}')">
+                    <div class="peer-avatar">${p.short_id.slice(0, 2).toUpperCase()}</div>
+                    <div class="peer-info">
+                        <div class="peer-name">Node ${p.short_id}</div>
+                        <div class="peer-status">${p.host}:${p.port}</div>
                     </div>
-                `;
-                list.appendChild(li);
-            });
+                </li>
+            `).join('');
         }
 
-        function selectPeer(peer) {
-            selectedPeerId = peer.id;
-            document.getElementById('current-peer-name').innerText = `Node: ${peer.id.slice(0, 8)}`;
-            document.getElementById('current-peer-addr').innerText = `${peer.host}:${peer.port}`;
-            refreshPeers();
+        function selectPeer(id, shortId, addr) {
+            selectedPeer = id;
+            document.getElementById('target-name').innerText = `Direct Node Stream: ${shortId}`;
+            document.getElementById('target-status').innerText = `Verified Handshake • ${addr}`;
         }
 
-        async function sendMessage() {
+        async function updateChat() {
+            const res = await fetch('/api/messages');
+            const msgs = await res.json();
+            if (msgs.length === lastMsgLen) return;
+            lastMsgLen = msgs.length;
+
+            const box = document.getElementById('chat-container');
+            box.innerHTML = msgs.map(m => `
+                <div class="msg-group ${m.sender === 'me' ? 'sent' : (m.sender === 'AI' ? 'ai' : 'received')}">
+                    <div class="msg-bubble">${m.content}</div>
+                    <div style="font-size:10px; color:var(--text-dim); margin-top:4px; padding:0 8px;">
+                        ${m.sender === 'me' ? 'Local' : (m.sender === 'AI' ? 'Gemini AI' : 'Remote Node')} • ${m.time || 'now'}
+                    </div>
+                </div>
+            `).join('');
+            box.scrollTop = box.scrollHeight;
+        }
+
+        async function updateLogs() {
+            const res = await fetch('/api/logs');
+            const logs = await res.json();
+            if (logs.length === lastLogLen) return;
+            lastLogLen = logs.length;
+
+            const box = document.getElementById('console');
+            box.innerHTML = logs.map(l => `
+                <div class="log-entry">
+                    <span class="log-time">[${l.time}]</span>
+                    ${l.content}
+                </div>
+            `).join('');
+            box.scrollTop = box.scrollHeight;
+        }
+
+        async function updateTransfers() {
+            const res = await fetch('/api/transfers');
+            const data = await res.json();
+            const zone = document.getElementById('transfer-zone');
+            const items = [...data.downloads, ...data.uploads];
+            if (items.length === 0) {
+                zone.innerHTML = `<div style="font-size:12px; color:var(--text-dim);">No active chunk transfers</div>`;
+                return;
+            }
+            zone.innerHTML = items.map(t => `
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>${t.file}</span>
+                        <span>${t.progress || 100}%</span>
+                    </div>
+                    <div class="progress-track"><div class="progress-fill" style="width:${t.progress || 100}%"></div></div>
+                </div>
+            `).join('');
+        }
+
+        async function send() {
             const input = document.getElementById('chat-input');
-            const content = input.value.trim();
-            if(!content || !selectedPeerId) return;
-
+            const val = input.value.trim();
+            if (!val || !selectedPeer) {
+                if (!selectedPeer) alert("Please select a target node.");
+                return;
+            }
+            input.value = '';
             await fetch('/api/send', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({peer_id: selectedPeerId, content: content})
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ peer_id: selectedPeer, content: val })
             });
-            input.value = '';
-            pollMessages();
         }
 
-        async function pollMessages() {
-            const res = await fetch('/api/messages');
-            const data = await res.json();
-            const chat = document.getElementById('chat-area');
-            chat.innerHTML = '';
-            data.forEach(msg => {
-                const div = document.createElement('div');
-                div.className = `message ${msg.sender === 'me' ? 'sent' : 'received'}`;
-                div.innerText = msg.content;
-                chat.appendChild(div);
-            });
-            chat.scrollTop = chat.scrollHeight;
-        }
-
-        async function askAi() {
+        async function askGemini() {
             const input = document.getElementById('chat-input');
-            const content = input.value.trim();
-            if(!content) return;
-            
-            // Add a temporary "Thinking" message
-            messages.push({sender: "ai", content: "..."});
-            pollMessages();
-            
-            const res = await fetch('/api/ask-ai', {
+            const val = input.value.trim();
+            if (!val) { alert("Type your question in the composer first."); return; }
+            input.value = '';
+            await fetch('/api/ask-ai', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({peer_id: "", content: content})
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ peer_id: "", content: val })
             });
-            const data = await res.json();
-            // API server handles the Gemini call
         }
 
-        async function showConnectModal() {
-            const addr = prompt("Entrez l'adresse IP et le port (ex: 192.168.1.10:7777)");
-            if(!addr) return;
+        async function manualConnect() {
+            const addr = prompt("Enter IP:Port (e.g. 192.168.1.5:7777)");
+            if (!addr) return;
             const [host, port] = addr.split(':');
-            await fetch('/api/connect', {
+            const res = await fetch('/api/connect', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({host: host, port: parseInt(port || 7777)})
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ host: host, port: parseInt(port || 7777) })
             });
-            refreshPeers();
+            if (!res.ok) alert("Connection attempt failed. Check logs.");
         }
 
-        setInterval(refreshPeers, 3000);
-        setInterval(pollMessages, 2000);
-        updateStatus();
+        init();
     </script>
 </body>
+
 </html>

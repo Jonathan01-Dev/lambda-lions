@@ -11,10 +11,12 @@ from src.core.node import Node
 from src.protocol.packet import Packet
 from src.protocol import types
 
+from datetime import datetime
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("archipel-api")
 
-app = FastAPI(title="Archipel P2P API")
+app = FastAPI(title="Archipel High-Fidelity API")
 
 # Enable CORS for local development
 app.add_middleware(
@@ -26,12 +28,14 @@ app.add_middleware(
 
 # Shared Node instance
 node = None
-messages = [] # Global message log for the UI
+messages = [] # chat
+system_logs = [] # protocol logs
+MAX_MESSAGES = 100
 
-class Message(BaseModel):
-    sender: str
-    content: str
-    timestamp: str
+def log_system(msg):
+    time_str = datetime.now().strftime("%H:%M:%S")
+    system_logs.append({"content": msg, "time": time_str})
+    if len(system_logs) > 50: system_logs.pop(0)
 
 class ConnectRequest(BaseModel):
     host: str
@@ -46,6 +50,7 @@ async def startup_event():
     global node
     port = int(os.getenv("ARCHIPEL_PORT", 7777))
     node = Node(f"web-node-{port}", tcp_port=port)
+    log_system(f"Archipel Node initialized on port {port}")
     
     # Patch node to capture messages
     original_on_message = node.on_message_received
@@ -54,9 +59,14 @@ async def startup_event():
             packet = Packet.deserialize(data)
             if packet.type == types.MSG:
                 content = packet.payload.decode(errors='replace')
-                messages.append({"sender": sender_id, "content": content})
-        except:
-            messages.append({"sender": sender_id, "content": data.decode(errors='replace')})
+                time_str = datetime.now().strftime("%H:%M")
+                messages.append({"sender": sender_id, "content": content, "time": time_str})
+                log_system(f"Message received from {sender_id[:8]}")
+        except Exception as e:
+            log_system(f"Raw data received from {sender_id[:8]}")
+        
+        if len(messages) > MAX_MESSAGES:
+            messages.pop(0)
         original_on_message(sender_id, data)
     
     node.on_message_received = patched_on_message
@@ -70,38 +80,69 @@ async def startup_event():
         await node.start()
         logger.info(f"Archipel Node started on fallback P2P port {node.tcp_port}")
 
+@app.get("/api/logs")
+async def get_logs():
+    return system_logs
+
 @app.get("/api/status")
 async def get_status():
     return {
         "node_id": node.node_id.hex() if node else None,
         "port": node.tcp_port if node else None,
-        "peers_count": len(node.peer_table.list_peers()) if node else 0
+        "peers_count": len(node.peer_table.list_peers()) if node else 0,
+        "uptime": "Active"
     }
 
 @app.get("/api/peers")
 async def get_peers():
     peers = node.peer_table.list_peers()
-    return [{"id": p[0], "host": p[1], "port": p[2]} for p in peers]
+    return [{"id": p[0], "host": p[1], "port": p[2], "short_id": p[0][:8]} for p in peers]
+
+@app.get("/api/transfers")
+async def get_transfers():
+    # Return active downloads and uploads
+    downloads = getattr(node, "_active_downloads", {})
+    uploads = getattr(node, "_active_uploads", {})
+    
+    res = {"downloads": [], "uploads": []}
+    for k, v in downloads.items():
+        recv = len(v.get("received", {}))
+        total = len(v.get("chunk_hashes", []))
+        progress = (recv / total * 100) if total > 0 else 0
+        res["downloads"].append({"file": v["filename"], "progress": round(progress, 1), "status": "receiving"})
+        
+    for k, v in uploads.items():
+        res["uploads"].append({"file": v["filename"], "status": "seeding"})
+        
+    return res
 
 @app.post("/api/connect")
 async def connect_peer(req: ConnectRequest):
+    log_system(f"Connecting to {req.host}:{req.port}...")
     try:
         from src.network.tcp_client import TCPClient
         client = TCPClient(node, req.host, req.port)
         peer_id = await client.connect()
         await client.close()
+        log_system(f"Handshake successful with {peer_id[:8]}")
         return {"status": "success", "peer_id": peer_id}
     except Exception as e:
+        log_system(f"Connection failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/send")
 async def send_message(req: SendMessageRequest):
+    log_system(f"Sending message to {req.peer_id[:8]}")
     try:
         packet = Packet(types.MSG, node.node_id, req.content.encode())
         await node.send_to_peer(req.peer_id, packet.serialize())
-        messages.append({"sender": "me", "content": req.content})
+        time_str = datetime.now().strftime("%H:%M")
+        messages.append({"sender": "me", "content": req.content, "time": time_str})
+        if len(messages) > MAX_MESSAGES:
+            messages.pop(0)
         return {"status": "sent"}
     except Exception as e:
+        log_system(f"Send failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/messages")
@@ -110,12 +151,17 @@ async def get_messages():
 
 @app.post("/api/ask-ai")
 async def ask_ai(req: SendMessageRequest):
+    log_system("Querying Gemini AI Assistant...")
     try:
         from src.messaging.gemini import GeminiIntegration
         gemini = GeminiIntegration()
         response = gemini.query(req.content)
+        time_str = datetime.now().strftime("%H:%M")
+        messages.append({"sender": "AI", "content": response, "time": time_str})
+        log_system("Gemini AI responded.")
         return {"response": response}
     except Exception as e:
+        log_system(f"AI Assistant Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Serve the static UI
