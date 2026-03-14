@@ -1,0 +1,16 @@
+"""Protocol constants."""
+
+# Packet structure
+MAGIC = 0xAA55CCDD
+VERSION = 1
+MAGIC_SIZE = 4
+TYPE_SIZE = 1
+NODE_ID_SIZE = 32
+PAYLOAD_LEN_SIZE = 4
+SIGNATURE_SIZE = 32
+
+# Total header size
+HEADER_SIZE = MAGIC_SIZE + TYPE_SIZE + NODE_ID_SIZE + PAYLOAD_LEN_SIZE
+
+# Total packet size (header + signature)
+MIN_PACKET_SIZE = HEADER_SIZE + SIGNATURE_SIZE
