@@ -180,19 +180,6 @@ archipel-team/
 
 ---
 
-##  Format de Paquet Archipel v1
-
-┌─────────────────────────────────────────────────────────────┐
-│ ARCHIPEL PACKET v1 │
-├─────────────┬──────────┬──────────┬──────────────────────────┤
-│ MAGIC │ TYPE │ NODE_ID │ PAYLOAD_LEN │
-│ 4 bytes │ 1 byte │ 32 bytes │ 4 bytes │
-└─────────────┴──────────┴──────────┴──────────────────────────┘
-│ PAYLOAD (chiffré, longueur variable) │
-└──────────────────────────────────────────────────────────────┘
-│ HMAC-SHA256 SIGNATURE (32 bytes) │
-└───────────────────────────
-
 
 
 ### Types de paquets
@@ -208,3 +195,4 @@ archipel-team/
 | `0x07` | ACK | Acquittement |
 
 ### Exemple : Paquet HELLO (73 bytes)
+Modifier par Florent
